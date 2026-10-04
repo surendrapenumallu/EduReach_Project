@@ -1,0 +1,22 @@
+# Node modules & dependencies
+node_modules/
+**/node_modules/
+
+# Environment files
+.env
+*.env
+!.env.example
+**/.env
+
+# Build outputs
+dist/
+**/dist/
+build/
+**/build/
+
+# Logs & OS junk
+*.log
+.DS_Store
+**/.DS_Store
+.vscode/
+.idea/

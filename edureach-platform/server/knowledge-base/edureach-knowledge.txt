@@ -1,0 +1,76 @@
+EduReach College Information Handbook
+
+General Information:
+Name: EduReach College
+Tagline: Your Gateway to Smarter Education Decisions
+Established: Est. 2005
+Location: Hyderabad, Telangana, India
+Affiliation: Affiliated with JNTU Hyderabad (Jawaharlal Nehru Technological University, Hyderabad)
+Approval: Approved by AICTE, New Delhi (All India Council for Technical Education)
+Campus Size: 25-acre green campus.
+Contact Email (Admissions): admissions@edureach.edu.in
+Contact Email (General): info@edureach.edu.in
+Phone: +91-9876543210
+Address: Hyderabad, Telangana, India
+
+Academic Programs & Courses Offered:
+B.Tech Programs (4 Years):
+1. Computer Science & Engineering (CSE) - 180 seats. Average package: ₹10.2 LPA.
+2. Electronics & Communication Engineering (ECE) - 120 seats. Average package: ₹7.2 LPA.
+3. Artificial Intelligence & Data Science (AI & DS) - 60 seats. Average package: ₹11.5 LPA.
+4. Information Technology (IT) - 120 seats. Average package: ₹8.8 LPA.
+5. Mechanical Engineering (ME) - 60 seats. Average package: ₹5.5 LPA.
+6. Civil Engineering (CE) - 60 seats. Average package: ₹5.0 LPA.
+
+M.Tech Programs (2 Years):
+1. Computer Science - 30 seats.
+2. VLSI Design - 18 seats.
+3. Structural Engineering - 18 seats.
+
+MBA Program:
+- MBA Specializations in Finance, Marketing, HR, and IT - 60 seats. Average package: ₹8.0 LPA.
+
+Fee Structure & Tuition Fees (Annual):
+- B.Tech CSE & AI & DS: ₹1,20,000 per year.
+- B.Tech ECE & IT: ₹1,00,000 per year.
+- B.Tech Mechanical & Civil: ₹80,000 per year.
+- M.Tech Programs: ₹75,000 per year.
+- MBA Program: ₹90,000 per year.
+- Hostel & Mess Charges: ₹75,000 per year for Non-AC rooms; ₹95,000 per year for AC rooms (includes 4 meals daily, Wi-Fi, laundry, and gym).
+
+Scholarships & Financial Assistance:
+- Merit Scholarship: Up to 100% tuition fee waiver for students ranking in top 5,000 TS EAMCET or top 10,000 JEE Main.
+- Means Scholarship: 50% tuition fee concession for families with annual income below ₹2.5 Lakhs.
+- Women Empowerment Grant: 25% tuition fee waiver for all female engineering candidates.
+- Sports & Defense Quota: Special fee waivers for state/national sports achievers and children of armed forces personnel.
+
+Admissions Timeline & Eligibility Criteria:
+- Admissions open annually on March 1st.
+- B.Tech Eligibility: Passed 10+2 with Physics, Chemistry, and Mathematics (PCM) with minimum 60% aggregate. Entrance score accepted: TS EAMCET or JEE Main.
+- Direct / Management Quota: 30% seats reserved for direct admission based on 10+2 PCM merit (minimum 75% required).
+- NRI / Foreign Student Desk: Dedicated desk assisting international applicants with visa and lateral entry admissions.
+
+Faculty & Mentors:
+1. Dr. Rajesh Kumar: Head of CSE Department. Qualification: PhD from IIT Bombay. Experience: 20+ years, published 50+ research papers. Teaches: AI, ML, Data Science.
+2. Prof. Ananya Sharma: Associate Professor, ECE Department. Qualification: M.Tech from IIT Hyderabad. Experience: 15 years in academia + 5 years at Texas Instruments. Teaches: VLSI, Embedded Systems, IoT.
+3. Dr. Vikram Patel: Professor, AI & DS Department. Qualification: PhD from Stanford University. Experience: Former Google Research Scientist, published 30+ NeurIPS papers. Teaches: NLP, Deep Learning, Computer Vision.
+4. Prof. Meera Reddy: Head of MBA Department. Qualification: MBA from IIM Ahmedabad, PhD from ISB. Experience: 18 years in academia + 7 years at Deloitte. Lead for Startup Incubator.
+
+Campus & Student Life Facilities:
+- Smart Campus: Green campus with campus-wide high-speed Wi-Fi, modern smart classrooms, and advanced computer labs equipped with over 500+ systems.
+- Innovation & Startup Incubator ("EduReach Launchpad"): Provides seed funding up to ₹10 Lakhs, mentorship, and free office space for student startups.
+- Specialized Research Labs: NVIDIA AI & Deep Learning Supercomputing Center, Texas Instruments Embedded Systems Lab, and IoT Innovation Hub.
+- Central Library: Fully cataloged central library containing over 50,000+ physical books, access to digital libraries (IEEE, ACM, Springer), and a 24/7 quiet reading room.
+- Hostels & Security: Separate hostel facilities for boys and girls with 24/7 security, CCTV monitoring, biometric attendance, curfew time at 8:30 PM, AC/non-AC options, and full-time medical clinic with ambulance service.
+- Transport: Fleet of 35 AC buses providing pickup and drop service across all major regions of Hyderabad and Secunderabad.
+- Fests & Events: Annual fests include TechNova (Technical Fest in October), Aarohan (Cultural Fest in March), and EduSports (Annual Sports Meet in February), along with regular hackathons.
+- Student Clubs: Active student clubs for Coding, Robotics, AI, Literary & Debating, Photography, Music, NSS, and NCC.
+- Sports Facilities: Large sports complex featuring grounds for cricket, football, basketball courts, tennis courts, volleyball, and indoor badminton.
+
+Placement Statistics:
+- Placement Rate: 92% of eligible students successfully placed.
+- Highest Package Offered: ₹42 LPA.
+- Average Package: Top packages are in AI & DS (₹11.5 LPA), CSE (₹10.2 LPA), and IT (₹8.8 LPA).
+- Number of Recruiting Companies: Over 150+ companies visit campus annually.
+- Total Placement Offers: 850+ offers received in the latest cycle.
+- Key Recruiting Partners: TCS, Infosys, Wipro, Google, Microsoft, Amazon, Flipkart, Deloitte, Accenture, Razorpay, Zerodha, CRED, PhonePe, HCL, L&T, Bosch, Siemens, EY, KPMG.
