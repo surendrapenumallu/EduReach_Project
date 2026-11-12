@@ -38,9 +38,9 @@ flowchart TD
         Cloudinary["Cloudinary Media Storage"]
     end
 
-    UI -->|HTTP / REST| Router
-    Chat -->|REST / RAG Query| Router
-    SocketC <-->|WebSockets (ws)| SocketS
+    UI -->|"HTTP / REST"| Router
+    Chat -->|"REST / RAG Query"| Router
+    SocketC <-->|"WebSockets (ws)"| SocketS
 
     Router --> AuthM --> Controllers
     Controllers --> MongoDB
