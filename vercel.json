@@ -1,0 +1,13 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "vite",
+  "installCommand": "npm --prefix edureach-platform/client install --include=dev",
+  "buildCommand": "npm --prefix edureach-platform/client run build",
+  "outputDirectory": "edureach-platform/client/dist",
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}
