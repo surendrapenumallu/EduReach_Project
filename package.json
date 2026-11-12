@@ -8,6 +8,7 @@
     "dev:server": "npm --prefix edureach-platform run dev:server",
     "dev:client": "npm --prefix edureach-platform run dev:client",
     "build": "npm --prefix edureach-platform run build",
+    "start": "npm --prefix edureach-platform run start",
     "test": "npm --prefix edureach-platform run test"
   }
 }

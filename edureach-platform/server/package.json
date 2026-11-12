@@ -6,8 +6,8 @@
   "scripts": {
     "test": "vitest run",
     "dev": "tsx watch src/index.ts",
-    "start": "tsx src/index.ts",
-    "build": "tsc"
+    "start": "(test -d node_modules/tsx || npm install --include=dev) && tsx src/index.ts",
+    "build": "(test -d node_modules/express && test -d node_modules/@types/node || npm install --include=dev) && tsc"
   },
   "author": "",
   "license": "MIT",
