@@ -35,11 +35,17 @@ export default function StudentResultsPage() {
       .finally(() => setLoading(false));
   }, []);
 
+  const handleDownloadPDF = () => {
+    toast.success("Streaming Official Authenticated Grade Card PDF...");
+    const apiUrl = import.meta.env.VITE_API_BASE_URL?.replace(/\/api\/?$/, "") || "http://localhost:5050";
+    window.open(`${apiUrl}/api/results/${result?._id || "latest"}/pdf`, "_blank");
+  };
+
   const handlePrint = () => {
-    toast.success("Generating Official Result Grade Card PDF...");
+    toast.success("Printing Grade Card...");
     setTimeout(() => {
       window.print();
-    }, 500);
+    }, 400);
   };
 
   if (loading) {
@@ -79,10 +85,16 @@ export default function StudentResultsPage() {
 
           <div className="flex items-center gap-3">
             <button
-              onClick={handlePrint}
+              onClick={handleDownloadPDF}
               className="flex items-center gap-2 text-sm font-semibold bg-maroon text-white px-4 py-2.5 rounded-xl hover:bg-maroon-dark shadow-md transition-colors"
             >
-              <Printer className="w-4 h-4" /> Download Grade Card
+              <Printer className="w-4 h-4" /> Download Official PDF
+            </button>
+            <button
+              onClick={handlePrint}
+              className="flex items-center gap-2 text-sm font-semibold bg-gray-100 text-gray-700 px-4 py-2.5 rounded-xl hover:bg-gray-200 transition-colors"
+            >
+              Print Card
             </button>
           </div>
         </div>

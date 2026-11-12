@@ -10,7 +10,7 @@ declare global {
   }
 }
 
-const authMiddleware = (req: Request, res: Response, next: NextFunction): void => {
+export const authMiddleware = (req: Request, res: Response, next: NextFunction): void => {
   try {
     const authHeader = req.headers.authorization;
 
@@ -42,6 +42,22 @@ const authMiddleware = (req: Request, res: Response, next: NextFunction): void =
     }
     res.status(500).json({ success: false, message: "Authentication failed." });
   }
+};
+
+export const optionalAuthMiddleware = (req: Request, _res: Response, next: NextFunction): void => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith("Bearer ")) {
+      const token = authHeader.split(" ")[1];
+      if (token) {
+        req.user = verifyToken(token);
+      }
+    }
+  } catch {
+    // Guest or unauthenticated applicant
+    req.user = undefined;
+  }
+  next();
 };
 
 export default authMiddleware;

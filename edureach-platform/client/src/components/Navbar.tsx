@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { navLinks } from "../data/content";
+import NotificationBell from "./NotificationBell";
 
 export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -59,7 +60,14 @@ export default function Navbar() {
           >
             <Award className="w-3.5 h-3.5 text-emerald-600" /> Exam Results
           </Link>
-          {isFaculty ? (
+          {user?.role === "admin" ? (
+            <Link
+              to="/admin"
+              className="text-sm font-semibold text-indigo-900 flex items-center gap-1.5 bg-indigo-50 border border-indigo-200 px-3 py-1 rounded-full hover:bg-indigo-100 transition-colors"
+            >
+              <ShieldCheck className="w-3.5 h-3.5 text-indigo-700" /> Admin Portal
+            </Link>
+          ) : isFaculty ? (
             <Link
               to="/faculty"
               className="text-sm font-semibold text-maroon flex items-center gap-1.5 bg-maroon/10 px-3 py-1 rounded-full hover:bg-maroon/20 transition-colors"
@@ -77,18 +85,31 @@ export default function Navbar() {
         <div className="flex items-center gap-3">
           {user ? (
             <div className="flex items-center gap-2">
+              <NotificationBell />
               <Link
-                to={isFaculty ? "/faculty" : "/dashboard"}
+                to={user.role === "admin" ? "/admin" : isFaculty ? "/faculty" : "/dashboard"}
                 className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full border transition-colors ${
-                  isFaculty
+                  user.role === "admin"
+                    ? "bg-indigo-50 text-indigo-900 border-indigo-300 hover:bg-indigo-100"
+                    : isFaculty
                     ? "bg-amber-50 text-amber-900 border-amber-300 hover:bg-amber-100"
                     : "bg-cream text-gray-700 border-maroon/20 hover:bg-maroon/5"
                 }`}
-                title={isFaculty ? "Faculty Member Portal" : "Student Dashboard"}
+                title={user.role === "admin" ? "Administrator Portal" : isFaculty ? "Faculty Member Portal" : "Student Dashboard"}
               >
-                {isFaculty ? <Briefcase className="w-3.5 h-3.5 text-maroon" /> : <User className="w-3.5 h-3.5 text-maroon" />}
+                {user.role === "admin" ? (
+                  <ShieldCheck className="w-3.5 h-3.5 text-indigo-700" />
+                ) : isFaculty ? (
+                  <Briefcase className="w-3.5 h-3.5 text-maroon" />
+                ) : (
+                  <User className="w-3.5 h-3.5 text-maroon" />
+                )}
                 <span className="max-w-[110px] truncate">
-                  {isFaculty ? `Faculty: ${user.name.split(" ")[0]}` : `Hi, ${user.name.split(" ")[0]}`}
+                  {user.role === "admin"
+                    ? `Admin: ${user.name.split(" ")[0]}`
+                    : isFaculty
+                    ? `Faculty: ${user.name.split(" ")[0]}`
+                    : `Hi, ${user.name.split(" ")[0]}`}
                 </span>
               </Link>
 

@@ -3,23 +3,31 @@ import {
   register,
   login,
   getMe,
-  forgotPassword,
+  sendOtp,
   verifyOtp,
+  forgotPassword,
+  resetPassword,
+  logout,
   updateProfile,
   changePassword,
   toggle2FA,
 } from "../controllers/auth.controller";
 import authMiddleware from "../middleware/auth.middleware";
+import { validateBody } from "../middleware/validate.middleware";
+import { registerSchema, loginSchema, updateProfileSchema, changePasswordSchema } from "../schemas/auth.schema";
 
 const router = Router();
 
-router.post("/register", register);
-router.post("/login", login);
+router.post("/register", validateBody(registerSchema), register);
+router.post("/login", validateBody(loginSchema), login);
 router.get("/me", authMiddleware, getMe);
-router.post("/forgot-password", forgotPassword);
+router.post("/send-otp", sendOtp);
 router.post("/verify-otp", verifyOtp);
-router.put("/update-profile", authMiddleware, updateProfile);
-router.post("/change-password", authMiddleware, changePassword);
+router.post("/forgot-password", forgotPassword);
+router.post("/reset-password", resetPassword);
+router.post("/logout", logout);
+router.put("/update-profile", authMiddleware, validateBody(updateProfileSchema), updateProfile);
+router.post("/change-password", authMiddleware, validateBody(changePasswordSchema), changePassword);
 router.post("/toggle-2fa", authMiddleware, toggle2FA);
 
 export default router;

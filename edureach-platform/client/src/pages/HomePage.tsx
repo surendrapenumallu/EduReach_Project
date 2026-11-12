@@ -38,7 +38,7 @@ export default function HomePage() {
   return (
     <div>
       {/* Visible to everyone */}
-      <HeroSection />
+      <HeroSection onOpenAdmissionModal={() => setShowAppModal(true)} />
       <AboutSection />
       <AchievementsSection />
       <CoursesSection onApplyCourse={handleApplyCourse} />

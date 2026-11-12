@@ -7,6 +7,9 @@ export interface IUser extends Document {
   password: string;
   phone?: string;
   role: "student" | "faculty" | "admin";
+  status: "active" | "inactive" | "suspended";
+  isEmailVerified: boolean;
+  rollNo?: string;
   department?: string;
   facultyId?: string;
   designation?: string;
@@ -49,6 +52,20 @@ const UserSchema: Schema<IUser> = new Schema({
     type: String,
     enum: ["student", "faculty", "admin"],
     default: "student",
+  },
+  status: {
+    type: String,
+    enum: ["active", "inactive", "suspended"],
+    default: "active",
+  },
+  isEmailVerified: {
+    type: Boolean,
+    default: false,
+  },
+  rollNo: {
+    type: String,
+    trim: true,
+    default: null,
   },
   department: {
     type: String,
@@ -95,6 +112,17 @@ const UserSchema: Schema<IUser> = new Schema({
     type: Date,
     default: Date.now,
   },
+}, {
+  toJSON: { virtuals: true },
+  toObject: { virtuals: true },
+});
+
+UserSchema.virtual("fullName").get(function () {
+  return this.name;
+});
+
+UserSchema.virtual("mobile").get(function () {
+  return this.phone;
 });
 
 const User = mongoose.model<IUser>("User", UserSchema);

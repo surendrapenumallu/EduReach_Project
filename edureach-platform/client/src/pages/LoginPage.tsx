@@ -15,11 +15,16 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { loginUser, forgotPassword, verifyOtp } from "../services/auth.service";
-import { useAuth } from "../context/AuthContext";
+import { useAuth, type User as AuthUser } from "../context/AuthContext";
 import { images } from "../data/content";
 
+interface LoginResponseData {
+  token: string;
+  user: AuthUser;
+}
+
 export default function LoginPage() {
-  const [activeTab, setActiveTab] = useState<"student" | "faculty">("student");
+  const [activeTab, setActiveTab] = useState<"student" | "faculty" | "admin">("student");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
@@ -34,7 +39,7 @@ export default function LoginPage() {
   const [forgotLoading, setForgotLoading] = useState(false);
 
   // 2FA Challenge state on Login
-  const [pendingUser, setPendingUser] = useState<any>(null);
+  const [pendingUser, setPendingUser] = useState<LoginResponseData | null>(null);
   const [twoFACode, setTwoFACode] = useState("");
   const [show2FAModal, setShow2FAModal] = useState(false);
 
@@ -50,23 +55,25 @@ export default function LoginPage() {
     }
   }, []);
 
-  const handleTabChange = (tab: "student" | "faculty") => {
+  const handleTabChange = (tab: "student" | "faculty" | "admin") => {
     setActiveTab(tab);
-    if (!rememberMe) {
-      setEmail("");
-      setPassword("");
-    }
+    setEmail("");
+    setPassword("");
   };
 
-  const handleDemoLogin = async (role: "student" | "faculty") => {
-    const demoEmail = role === "faculty" ? "faculty@edureach.edu" : "student@edureach.edu";
+  const handleDemoLogin = async (role: "student" | "faculty" | "admin") => {
+    let demoEmail = "student@edureach.edu";
+    if (role === "faculty") demoEmail = "faculty@edureach.edu";
+    if (role === "admin") demoEmail = "admin@edureach.edu";
     const demoPassword = "password123";
+
+    setActiveTab(role);
     setEmail(demoEmail);
     setPassword(demoPassword);
     setLoading(true);
 
     try {
-      const data = await loginUser({ email: demoEmail, password: demoPassword, role });
+      const data: LoginResponseData = await loginUser({ email: demoEmail, password: demoPassword, role });
 
       if (rememberMe) {
         localStorage.setItem("remember_user", demoEmail);
@@ -75,14 +82,27 @@ export default function LoginPage() {
       }
 
       login(data.token, data.user);
-      toast.success(`Welcome ${role === "faculty" ? "Prof. Sharma (Faculty Portal)" : "Alex (Student Portal)"}!`);
-      if (role === "faculty") {
+      const greeting =
+        role === "admin"
+          ? "Welcome Dr. Vance (Administrator Portal)!"
+          : role === "faculty"
+          ? "Welcome Prof. Sharma (Faculty Portal)!"
+          : "Welcome Alex (Student Portal)!";
+      toast.success(greeting);
+
+      if (role === "admin") {
+        navigate("/admin");
+      } else if (role === "faculty") {
         navigate("/faculty");
       } else {
-        navigate("/results");
+        navigate("/dashboard");
       }
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || "Login failed.");
+    } catch (err: unknown) {
+      const errorMsg =
+        err && typeof err === "object" && "response" in err
+          ? (err as { response?: { data?: { message?: string } } }).response?.data?.message
+          : "Login failed.";
+      toast.error(errorMsg || "Login failed.");
     } finally {
       setLoading(false);
     }
@@ -97,7 +117,24 @@ export default function LoginPage() {
 
     setLoading(true);
     try {
-      const data = await loginUser({ email, password, role: activeTab });
+      const data: LoginResponseData = await loginUser({ email, password, role: activeTab });
+
+      // Strict role-based portal separation guard
+      if (activeTab === "faculty" && data.user?.role !== "faculty") {
+        toast.error("Account not found in faculty database. This is a student account. Please use the Student Login tab.");
+        setLoading(false);
+        return;
+      }
+      if (activeTab === "student" && data.user?.role === "faculty") {
+        toast.error("Account not found in student database. This is a faculty account. Please use the Faculty Login tab.");
+        setLoading(false);
+        return;
+      }
+      if (activeTab === "admin" && data.user?.role !== "admin") {
+        toast.error("Access restricted. You must be an authorized Administrator to enter the Admin Portal.");
+        setLoading(false);
+        return;
+      }
 
       // Check if 2FA is enabled for this user
       if (data.user?.is2FAEnabled) {
@@ -108,14 +145,18 @@ export default function LoginPage() {
       }
 
       completeLoginSession(data);
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || "Login failed. Please check your credentials.");
+    } catch (err: unknown) {
+      const errorMsg =
+        err && typeof err === "object" && "response" in err
+          ? (err as { response?: { data?: { message?: string } } }).response?.data?.message
+          : "Login failed. Please check your credentials.";
+      toast.error(errorMsg || "Login failed. Please check your credentials.");
     } finally {
       setLoading(false);
     }
   };
 
-  const completeLoginSession = (data: any) => {
+  const completeLoginSession = (data: LoginResponseData) => {
     if (rememberMe) {
       localStorage.setItem("remember_user", email);
     } else {
@@ -125,19 +166,19 @@ export default function LoginPage() {
     login(data.token, data.user);
     toast.success("Welcome back!");
 
-    const role = data.user?.role || activeTab;
-    if (role === "faculty") {
+    const userRole = data.user?.role || activeTab;
+    if (userRole === "faculty") {
       navigate("/faculty");
-    } else if (role === "admin") {
+    } else if (userRole === "admin") {
       navigate("/admin");
     } else {
-      navigate("/results");
+      navigate("/dashboard");
     }
   };
 
   const handle2FAVerify = (e: React.FormEvent) => {
     e.preventDefault();
-    if (twoFACode !== "123456" && twoFACode.length < 6) {
+    if (twoFACode !== "123456") {
       toast.error("Invalid 2FA Authenticator Code. Demo code is 123456.");
       return;
     }
@@ -160,7 +201,7 @@ export default function LoginPage() {
       await forgotPassword(forgotEmail);
       toast.success("Verification OTP code sent to your email! (Demo OTP: 123456)");
       setForgotStep(2);
-    } catch (err) {
+    } catch {
       toast.error("Could not send OTP code.");
     } finally {
       setForgotLoading(false);
@@ -183,8 +224,12 @@ export default function LoginPage() {
       setForgotEmail("");
       setOtpCode("");
       setNewPassword("");
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || "Invalid OTP verification code.");
+    } catch (err: unknown) {
+      const errorMsg =
+        err && typeof err === "object" && "response" in err
+          ? (err as { response?: { data?: { message?: string } } }).response?.data?.message
+          : "Invalid OTP verification code.";
+      toast.error(errorMsg || "Invalid OTP verification code.");
     } finally {
       setForgotLoading(false);
     }
@@ -209,7 +254,7 @@ export default function LoginPage() {
               Secure Role-Based Portal Access
             </h2>
             <p className="text-white/80 text-sm leading-relaxed">
-              Login using Faculty ID or Email to manage semester grade cards, upload academic marks, view student rosters, and access profile security settings.
+              Login to access attendance intelligence, semester marksheets, admission workflows, and faculty management tools.
             </p>
           </div>
 
@@ -234,52 +279,84 @@ export default function LoginPage() {
           <h1 className="font-heading text-3xl font-bold text-gray-900 mb-1">EduReach Portal Login</h1>
           <p className="text-gray-500 text-sm mb-6">Select your account type to proceed</p>
 
-          {/* Student vs Faculty Role Selector Tabs */}
-          <div className="grid grid-cols-2 gap-2 p-1.5 bg-gray-100 rounded-xl mb-6">
+          {/* Student vs Faculty vs Admin Role Selector Tabs */}
+          <div className="grid grid-cols-3 gap-1.5 p-1.5 bg-gray-100 rounded-xl mb-4">
             <button
               type="button"
               onClick={() => handleTabChange("student")}
-              className={`flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold transition-all ${
+              className={`flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-xs font-semibold transition-all ${
                 activeTab === "student"
                   ? "bg-maroon text-white shadow-md"
                   : "text-gray-600 hover:text-maroon hover:bg-white/60"
               }`}
             >
-              <User className="w-4 h-4" /> Student Login
+              <User className="w-3.5 h-3.5" /> Student
             </button>
             <button
               type="button"
               onClick={() => handleTabChange("faculty")}
-              className={`flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold transition-all ${
+              className={`flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-xs font-semibold transition-all ${
                 activeTab === "faculty"
                   ? "bg-maroon text-white shadow-md"
                   : "text-gray-600 hover:text-maroon hover:bg-white/60"
               }`}
             >
-              <Briefcase className="w-4 h-4" /> Faculty Login
+              <Briefcase className="w-3.5 h-3.5" /> Faculty
+            </button>
+            <button
+              type="button"
+              onClick={() => handleTabChange("admin")}
+              className={`flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-xs font-semibold transition-all ${
+                activeTab === "admin"
+                  ? "bg-indigo-900 text-white shadow-md"
+                  : "text-gray-600 hover:text-indigo-900 hover:bg-white/60"
+              }`}
+            >
+              <ShieldCheck className="w-3.5 h-3.5" /> Admin
             </button>
           </div>
 
-          {/* Quick Demo Credentials Banner */}
-          <div className="mb-6 p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-center justify-between">
-            <div className="text-xs text-amber-900">
-              <span className="font-bold">Fast Preview Mode:</span>
-              <br />
-              Log in instantly with sample data
+          {/* 1-Click Fast Preview Demos for ALL Roles */}
+          <div className="mb-6 p-3 bg-amber-50 border border-amber-200 rounded-xl space-y-2">
+            <div className="flex items-center justify-between text-xs text-amber-900">
+              <span className="font-bold flex items-center gap-1">
+                <Sparkles className="w-3.5 h-3.5 text-amber-600" /> 1-Click Fast Demo Logins:
+              </span>
+              <span className="text-[10px] text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full font-semibold">Direct Access</span>
             </div>
-            <button
-              type="button"
-              onClick={() => handleDemoLogin(activeTab)}
-              className="text-xs bg-amber-600 hover:bg-amber-700 text-white font-semibold px-3 py-1.5 rounded-lg shadow-sm transition-colors flex items-center gap-1"
-            >
-              <Sparkles className="w-3 h-3" /> Quick Demo
-            </button>
+            <div className="grid grid-cols-3 gap-1.5 pt-1">
+              <button
+                type="button"
+                onClick={() => handleDemoLogin("student")}
+                className="text-[11px] bg-white hover:bg-emerald-50 text-emerald-800 border border-emerald-300 font-semibold py-1.5 px-2 rounded-lg transition-colors flex items-center justify-center gap-1 shadow-2xs"
+              >
+                <User className="w-3 h-3 text-emerald-600" /> Student
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDemoLogin("faculty")}
+                className="text-[11px] bg-white hover:bg-amber-100 text-amber-900 border border-amber-300 font-semibold py-1.5 px-2 rounded-lg transition-colors flex items-center justify-center gap-1 shadow-2xs"
+              >
+                <Briefcase className="w-3 h-3 text-amber-700" /> Faculty
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDemoLogin("admin")}
+                className="text-[11px] bg-white hover:bg-indigo-100 text-indigo-900 border border-indigo-300 font-semibold py-1.5 px-2 rounded-lg transition-colors flex items-center justify-center gap-1 shadow-2xs"
+              >
+                <ShieldCheck className="w-3 h-3 text-indigo-700" /> Admin
+              </button>
+            </div>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-gray-600 mb-1">
-                {activeTab === "faculty" ? "Faculty ID / Official Email" : "Student Email Address"}
+                {activeTab === "admin"
+                  ? "Administrator Email"
+                  : activeTab === "faculty"
+                  ? "Faculty ID / Official Email"
+                  : "Student Email Address"}
               </label>
               <div className="relative">
                 <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -287,7 +364,13 @@ export default function LoginPage() {
                   type="text"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder={activeTab === "faculty" ? "FAC-1002 or faculty@edureach.edu" : "student@edureach.edu"}
+                  placeholder={
+                    activeTab === "admin"
+                      ? "admin@edureach.edu"
+                      : activeTab === "faculty"
+                      ? "FAC-1002 or faculty@edureach.edu"
+                      : "2303a51981@sru.edu.in or student@edureach.edu"
+                  }
                   className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-maroon focus:ring-1 focus:ring-maroon transition-colors"
                 />
               </div>
@@ -332,7 +415,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-maroon text-white py-3.5 rounded-xl font-semibold hover:bg-maroon-dark disabled:opacity-50 shadow-md transition-all flex items-center justify-center gap-2 text-sm"
+              className="w-full bg-maroon text-white py-3.5 rounded-xl font-semibold hover:bg-maroon-dark disabled:opacity-50 shadow-md transition-all flex items-center justify-center gap-2 text-sm cursor-pointer"
             >
               {loading ? (
                 "Authenticating..."
@@ -445,7 +528,7 @@ export default function LoginPage() {
             </div>
             <h3 className="font-heading text-xl font-bold text-gray-900">Two-Factor Security Verification</h3>
             <p className="text-xs text-gray-500">
-              This faculty account has 2FA enabled. Enter the 6-digit code from your authenticator app (Demo Code: <span className="font-bold text-maroon font-mono">123456</span>).
+              Enter the 6-digit verification code from your authenticator app (Demo Code: <span className="font-bold text-maroon font-mono">123456</span>).
             </p>
 
             <form onSubmit={handle2FAVerify} className="space-y-4 pt-2">

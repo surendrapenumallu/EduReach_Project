@@ -1,5 +1,6 @@
 import type { Request, Response, NextFunction } from "express";
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
+import { streamHallTicketPDF } from "../services/pdf.service";
 
 // GET /api/student/portal-data — Fetch all student dashboard data
 export const getStudentPortalData = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
@@ -405,6 +406,35 @@ export const predictAcademicRisk = async (req: Request, res: Response, next: Nex
     };
 
     res.json({ success: true, data: riskData });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// GET /api/student/hall-ticket/pdf — Stream Hall Ticket PDF
+export const downloadHallTicketPDF = async (
+  _req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const ticketData = {
+      ticketNo: "HT-2026-CSE-0104",
+      studentName: "Alex Rivera",
+      rollNo: "22CSE0104",
+      department: "Computer Science & Engineering",
+      semester: "Semester 6",
+      examCenter: "EduReach Main Examination Block A",
+      seatNo: "A-42",
+      schedule: [
+        { code: "CS601", title: "Artificial Intelligence & ML", date: "24-03-2026", time: "10:00 AM - 01:00 PM", room: "Hall 102" },
+        { code: "CS602", title: "Cloud Computing & DevOps", date: "27-03-2026", time: "10:00 AM - 01:00 PM", room: "Hall 104" },
+        { code: "CS603", title: "Database Systems & MongoDB", date: "30-03-2026", time: "10:00 AM - 01:00 PM", room: "Hall 102" },
+        { code: "CS604", title: "Design & Analysis of Algorithms", date: "02-04-2026", time: "10:00 AM - 01:00 PM", room: "Hall 105" },
+        { code: "CS605", title: "Web Technologies & React", date: "06-04-2026", time: "10:00 AM - 01:00 PM", room: "Hall 101" },
+      ],
+    };
+    streamHallTicketPDF(ticketData, res);
   } catch (error) {
     next(error);
   }

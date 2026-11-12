@@ -341,6 +341,18 @@ export const updateProfilePhoto = async (photoUrl: string): Promise<any> => {
   return res.data;
 };
 
+export const uploadImageFile = async (file: File): Promise<string> => {
+  const formData = new FormData();
+  formData.append("image", file);
+  const res = await axios.post(`${API_URL}/upload/image`, formData, {
+    headers: {
+      "Content-Type": "multipart/form-data",
+      ...getAuthHeader(),
+    },
+  });
+  return res.data.data.url;
+};
+
 export const reviewResumeWithAI = async (resumeText: string, targetRole?: string): Promise<AIResumeFeedback> => {
   const res = await axios.post(
     `${API_URL}/student/ai-resume-review`,

@@ -1,9 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAuth } from "../context/AuthContext";
-import { getMyApplications, type ApplicationData } from "../services/application.service";
 import {
   getStudentPortalData,
   updateProfilePhoto,
+  uploadImageFile,
   reviewResumeWithAI,
   getAIBriefing,
   calculateBunkSafety,
@@ -17,8 +17,6 @@ import {
   FileText,
   Clock,
   CheckCircle2,
-  XCircle,
-  AlertCircle,
   Plus,
   Bot,
   GraduationCap,
@@ -38,23 +36,36 @@ import {
   HelpCircle,
   Target,
   ShieldCheck,
+  Upload,
+  Loader2,
 } from "lucide-react";
 import ApplicationModal from "../components/ApplicationModal";
+import AdmissionStatusTracker from "../components/AdmissionStatusTracker";
 import ChatDrawer from "../components/ChatDrawer";
 import toast from "react-hot-toast";
+import {
+  ResponsiveContainer,
+  AreaChart,
+  Area,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ReferenceLine,
+} from "recharts";
+import { getSocket, joinUserRoom } from "../services/socket.service";
 
 type ActiveTab = "overview" | "attendance" | "cgpa" | "exams" | "results" | "placements" | "timeline";
 
 export default function StudentDashboard() {
   const { user, updateUser } = useAuth();
   const [activeTab, setActiveTab] = useState<ActiveTab>("overview");
-  const [applications, setApplications] = useState<ApplicationData[]>([]);
   const [portalData, setPortalData] = useState<StudentPortalData | null>(null);
   const [aiBriefing, setAiBriefing] = useState<AIBriefingData | null>(null);
   const [bunkResults, setBunkResults] = useState<BunkSafetyResult[]>([]);
   const [, setResults] = useState<StudentResult[]>([]);
   const [selectedResult, setSelectedResult] = useState<StudentResult | null>(null);
-  const [loading, setLoading] = useState(true);
   const [briefingLoading, setBriefingLoading] = useState(false);
 
   // Modals & Drawers
@@ -62,6 +73,8 @@ export default function StudentDashboard() {
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
   const [newPhotoUrl, setNewPhotoUrl] = useState("");
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState("upi");
   const [paymentProcessing, setPaymentProcessing] = useState(false);
@@ -99,14 +112,11 @@ export default function StudentDashboard() {
 
   const fetchInitialData = async () => {
     try {
-      setLoading(true);
-      const [appsData, pData, resData, briefingData] = await Promise.all([
-        getMyApplications().catch(() => []),
+      const [pData, resData, briefingData] = await Promise.all([
         getStudentPortalData().catch(() => null),
         getMyResults().catch(() => []),
         getAIBriefing().catch(() => null),
       ]);
-      setApplications(appsData);
       if (pData) {
         setPortalData(pData);
         const bSafety = await calculateBunkSafety(pData.attendance.courseWise).catch(() => []);
@@ -122,14 +132,36 @@ export default function StudentDashboard() {
     } catch (err) {
       console.error("Dashboard fetch error:", err);
       toast.error("Loaded offline data.");
-    } finally {
-      setLoading(false);
     }
   };
 
   useEffect(() => {
     fetchInitialData();
-  }, []);
+    joinUserRoom("student", user?.id);
+
+    const socket = getSocket();
+    const handleStatusUpdate = (payload: any) => {
+      toast.success(`Application update: ${payload.message}`, {
+        icon: "📄",
+        duration: 5000,
+      });
+      fetchInitialData();
+    };
+
+    const handleAttendanceWarning = (payload: any) => {
+      toast.error(`Attendance Warning: ${payload.message || "Attendance dropped below safe mark!"}`, {
+        duration: 6000,
+      });
+    };
+
+    socket.on("application:status_updated", handleStatusUpdate);
+    socket.on("attendance:warning", handleAttendanceWarning);
+
+    return () => {
+      socket.off("application:status_updated", handleStatusUpdate);
+      socket.off("attendance:warning", handleAttendanceWarning);
+    };
+  }, [user?.id]);
 
   const handleRefreshBriefing = async () => {
     try {
@@ -155,6 +187,42 @@ export default function StudentDashboard() {
     } catch (error) {
       console.error(error);
       toast.error("Failed to save profile photo.");
+    }
+  };
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please upload an image file (PNG, JPG, WebP, etc.)");
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Image file size must be less than 5MB");
+      return;
+    }
+
+    const toastId = toast.loading("Uploading image to Cloud storage...");
+    try {
+      setUploadingPhoto(true);
+      const uploadedUrl = await uploadImageFile(file);
+      toast.loading("Saving avatar to profile...", { id: toastId });
+      await updateProfilePhoto(uploadedUrl);
+      updateUser({ profilePhoto: uploadedUrl });
+      setNewPhotoUrl(uploadedUrl);
+      toast.success("Profile photo updated successfully!", { id: toastId });
+      setIsPhotoModalOpen(false);
+    } catch (err: any) {
+      console.error("Avatar upload failed:", err);
+      toast.error(
+        err.response?.data?.message || "Failed to upload image. Please try again.",
+        { id: toastId }
+      );
+    } finally {
+      setUploadingPhoto(false);
+      if (event.target) event.target.value = "";
     }
   };
 
@@ -234,35 +302,6 @@ export default function StudentDashboard() {
     user?.profilePhoto ||
     "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80";
 
-  const getStatusBadge = (status: ApplicationData["status"]) => {
-    switch (status) {
-      case "Accepted":
-        return (
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-100 text-emerald-800 border border-emerald-300 text-xs font-semibold rounded-full">
-            <CheckCircle2 className="w-3.5 h-3.5" /> Accepted & Admitted
-          </span>
-        );
-      case "Rejected":
-        return (
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-red-100 text-red-800 border border-red-300 text-xs font-semibold rounded-full">
-            <XCircle className="w-3.5 h-3.5" /> Application Declined
-          </span>
-        );
-      case "Under Review":
-        return (
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-blue-100 text-blue-800 border border-blue-300 text-xs font-semibold rounded-full">
-            <Clock className="w-3.5 h-3.5" /> Under Counselor Review
-          </span>
-        );
-      default:
-        return (
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-100 text-amber-800 border border-amber-300 text-xs font-semibold rounded-full">
-            <AlertCircle className="w-3.5 h-3.5" /> Pending Initial Verification
-          </span>
-        );
-    }
-  };
-
   const selectedBunkInfo = bunkResults.find((b) => b.code === selectedCourseCode) || bunkResults[0];
 
   const filteredDeadlines = (portalData?.deadlines || []).filter(
@@ -279,17 +318,37 @@ export default function StudentDashboard() {
             <div className="flex items-center gap-5">
               {/* Profile Photo Avatar */}
               <div className="relative group">
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileUpload}
+                  accept="image/*"
+                  className="hidden"
+                  id="student-avatar-input"
+                />
                 <img
                   src={userPhoto}
                   alt={user?.name || "Student"}
-                  className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl object-cover border-4 border-white/20 shadow-lg group-hover:opacity-90 transition-all"
+                  className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl object-cover border-4 border-white/20 shadow-lg group-hover:opacity-90 transition-all cursor-pointer"
+                  onClick={() => setIsPhotoModalOpen(true)}
+                  title="Click to view avatar options"
                 />
                 <button
-                  onClick={() => setIsPhotoModalOpen(true)}
-                  className="absolute bottom-0 right-0 p-2 bg-amber-400 text-slate-900 rounded-full shadow-md hover:scale-110 transition-transform"
-                  title="Update Profile Photo"
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    fileInputRef.current?.click();
+                  }}
+                  disabled={uploadingPhoto}
+                  className="absolute bottom-0 right-0 p-2 bg-amber-400 text-slate-900 rounded-full shadow-md hover:scale-110 active:scale-95 transition-transform disabled:opacity-60 cursor-pointer"
+                  title="Upload New Profile Photo (Direct to Cloud)"
+                  id="avatar-camera-btn"
                 >
-                  <Camera className="w-4 h-4" />
+                  {uploadingPhoto ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Camera className="w-4 h-4" />
+                  )}
                 </button>
               </div>
 
@@ -563,74 +622,8 @@ export default function StudentDashboard() {
               </div>
             </div>
 
-            {/* Applications List */}
-            <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-lg font-bold text-gray-900 font-heading">Submitted Admission Applications</h2>
-                  <p className="text-xs text-gray-500">Track application status and degree enrollment history</p>
-                </div>
-                <button
-                  onClick={fetchInitialData}
-                  className="text-xs text-maroon hover:underline font-semibold flex items-center gap-1"
-                >
-                  <RefreshCw className="w-3.5 h-3.5" /> Refresh
-                </button>
-              </div>
-
-              {loading ? (
-                <div className="p-8 text-center text-gray-500 space-y-2">
-                  <div className="w-6 h-6 border-2 border-maroon border-t-transparent rounded-full animate-spin mx-auto"></div>
-                  <p className="text-xs">Fetching applications...</p>
-                </div>
-              ) : applications.length === 0 ? (
-                <div className="p-8 text-center bg-gray-50 rounded-xl space-y-3">
-                  <p className="text-sm text-gray-600">No active admission applications found.</p>
-                  <button
-                    onClick={() => setIsApplyModalOpen(true)}
-                    className="px-4 py-2 bg-maroon text-white font-semibold rounded-xl text-xs shadow-md inline-flex items-center gap-1.5"
-                  >
-                    Start Admission Application <ArrowRight className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {applications.map((app) => (
-                    <div
-                      key={app._id}
-                      className="p-5 bg-gray-50/70 rounded-xl border border-gray-200 hover:border-maroon/40 transition-all space-y-3"
-                    >
-                      <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2">
-                        <div>
-                          <span className="text-[11px] text-gray-400 font-mono">APP ID: #{app._id.slice(-6).toUpperCase()}</span>
-                          <h3 className="text-lg font-bold text-gray-900">{app.course}</h3>
-                        </div>
-                        <div>{getStatusBadge(app.status)}</div>
-                      </div>
-
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs bg-white p-3 rounded-lg border border-gray-100">
-                        <div>
-                          <span className="text-gray-400 block">Student Name</span>
-                          <span className="font-semibold text-gray-800">{app.studentName}</span>
-                        </div>
-                        <div>
-                          <span className="text-gray-400 block">Email</span>
-                          <span className="font-semibold text-gray-800 truncate block">{app.email}</span>
-                        </div>
-                        <div>
-                          <span className="text-gray-400 block">12th Marks</span>
-                          <span className="font-semibold text-maroon">{app.twelfthPercentage}%</span>
-                        </div>
-                        <div>
-                          <span className="text-gray-400 block">Entrance Exam</span>
-                          <span className="font-semibold text-gray-800">{app.entranceExam} ({app.entranceRank || "N/A"})</span>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+            {/* Official Admission Application & Lifecycle Tracker */}
+            <AdmissionStatusTracker onOpenApplyModal={() => setIsApplyModalOpen(true)} />
           </div>
         )}
 
@@ -771,6 +764,38 @@ export default function StudentDashboard() {
                 <div className="p-6 border-b border-gray-100">
                   <h3 className="font-bold text-gray-900">Subject / Course-Wise Attendance Breakdown</h3>
                   <p className="text-xs text-gray-500">Real-time attendance calculation for each registered course</p>
+                </div>
+
+                {/* Visual Attendance Bar Chart */}
+                <div className="p-6 border-b border-gray-100 bg-gray-50/50">
+                  <div className="flex justify-between items-center mb-3">
+                    <span className="text-xs font-bold text-gray-700 uppercase tracking-wider">Attendance Percentage by Course</span>
+                    <span className="text-xs px-2.5 py-0.5 bg-maroon/10 text-maroon font-bold rounded-full">Mandatory Benchmark: 75%</span>
+                  </div>
+                  <div className="h-56">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart
+                        data={portalData?.attendance.courseWise.map((c) => ({
+                          code: c.code,
+                          percentage: c.percentage,
+                          subject: c.title,
+                        })) || []}
+                        margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+                      >
+                        <XAxis dataKey="code" stroke="#94a3b8" fontSize={11} />
+                        <YAxis domain={[60, 100]} stroke="#94a3b8" fontSize={11} />
+                        <Tooltip
+                          contentStyle={{
+                            borderRadius: "10px",
+                            border: "1px solid #e2e8f0",
+                            fontSize: "12px",
+                          }}
+                        />
+                        <ReferenceLine y={75} stroke="#ef4444" strokeDasharray="3 3" label={{ value: "Mandatory 75%", fill: "#ef4444", fontSize: 10 }} />
+                        <Bar dataKey="percentage" fill="#7B1113" radius={[6, 6, 0, 0]} name="Attendance %" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
                 </div>
 
                 <div className="divide-y divide-gray-100">
@@ -950,6 +975,71 @@ export default function StudentDashboard() {
               </div>
             </div>
 
+            {/* Recharts SGPA Progression Area Chart */}
+            <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4">
+              <div className="flex justify-between items-center border-b border-gray-100 pb-3">
+                <div>
+                  <h3 className="font-bold text-gray-900 text-lg">Semester SGPA Progression Curve</h3>
+                  <p className="text-xs text-gray-500">Continuous semester performance vs. Distinction target (8.0)</p>
+                </div>
+                <span className="text-xs px-2.5 py-1 bg-amber-100 text-amber-900 font-bold rounded-lg">
+                  Target: 9.0+
+                </span>
+              </div>
+
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart
+                    data={portalData?.cgpa.semesterSGPA || [
+                      { semester: "Semester 1", sgpa: 8.75, credits: 20 },
+                      { semester: "Semester 2", sgpa: 8.90, credits: 20 },
+                      { semester: "Semester 3", sgpa: 9.10, credits: 20 },
+                      { semester: "Semester 4", sgpa: 9.12, credits: 20 },
+                      { semester: "Semester 5", sgpa: 8.85, credits: 18 },
+                      { semester: "Semester 6", sgpa: 8.95, credits: 14 },
+                    ]}
+                    margin={{ top: 10, right: 15, left: -20, bottom: 0 }}
+                  >
+                    <defs>
+                      <linearGradient id="sgpaGradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#7B1113" stopOpacity={0.8} />
+                        <stop offset="95%" stopColor="#7B1113" stopOpacity={0.05} />
+                      </linearGradient>
+                    </defs>
+                    <XAxis
+                      dataKey="semester"
+                      stroke="#94a3b8"
+                      fontSize={11}
+                      tickFormatter={(val) => val.replace("Semester ", "Sem ")}
+                    />
+                    <YAxis domain={[7.5, 10]} stroke="#94a3b8" fontSize={11} />
+                    <Tooltip
+                      contentStyle={{
+                        borderRadius: "10px",
+                        border: "1px solid #e2e8f0",
+                        fontSize: "12px",
+                      }}
+                    />
+                    <ReferenceLine
+                      y={8.0}
+                      stroke="#f59e0b"
+                      strokeDasharray="3 3"
+                      label={{ value: "Distinction (8.0)", fill: "#d97706", fontSize: 10 }}
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="sgpa"
+                      stroke="#7B1113"
+                      strokeWidth={3}
+                      fillOpacity={1}
+                      fill="url(#sgpaGradient)"
+                      name="SGPA"
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
             {/* 🟠 PRIORITY 6: AI ACADEMIC RISK PREDICTION WIDGET */}
             <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4">
               <div className="flex justify-between items-center border-b border-gray-100 pb-3">
@@ -1076,10 +1166,14 @@ export default function StudentDashboard() {
                     </div>
                   </div>
                   <button
-                    onClick={() => window.print()}
+                    onClick={() => {
+                      toast.success("Streaming Official Hall Ticket PDF...");
+                      const apiUrl = import.meta.env.VITE_API_BASE_URL?.replace(/\/api\/?$/, "") || "http://localhost:5050";
+                      window.open(`${apiUrl}/api/student/hall-ticket/pdf`, "_blank");
+                    }}
                     className="px-5 py-2.5 bg-maroon text-white font-bold rounded-xl text-xs hover:bg-maroon-dark shadow-md flex items-center gap-2"
                   >
-                    <Printer className="w-4 h-4" /> Download / Print Hall Ticket
+                    <Printer className="w-4 h-4" /> Download Official Hall Ticket PDF
                   </button>
                 </div>
 
@@ -1399,6 +1493,36 @@ export default function StudentDashboard() {
                   className="w-28 h-28 rounded-full object-cover mx-auto border-4 border-maroon shadow-md"
                 />
                 <p className="text-xs text-gray-500">Live Avatar Preview</p>
+              </div>
+
+              {/* Direct File Upload to Cloudinary */}
+              <div className="p-4 bg-gradient-to-br from-cream/60 to-amber-50/40 rounded-2xl border border-amber-200/60 text-center space-y-2">
+                <p className="text-xs font-bold text-gray-700">Upload from Device</p>
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploadingPhoto}
+                  className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-maroon text-white font-semibold text-xs rounded-xl hover:bg-maroon-dark shadow-md active:scale-95 transition-all disabled:opacity-50 cursor-pointer"
+                >
+                  {uploadingPhoto ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Uploading to Cloud...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="w-4 h-4" />
+                      <span>Choose File from Computer</span>
+                    </>
+                  )}
+                </button>
+                <p className="text-[11px] text-gray-500">Supports PNG, JPG, WebP up to 5MB</p>
+              </div>
+
+              <div className="relative flex py-1 items-center">
+                <div className="flex-grow border-t border-gray-200"></div>
+                <span className="flex-shrink mx-3 text-gray-400 text-[10px] uppercase font-bold tracking-wider">Or choose preset</span>
+                <div className="flex-grow border-t border-gray-200"></div>
               </div>
 
               <div>

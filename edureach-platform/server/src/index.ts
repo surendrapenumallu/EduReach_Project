@@ -1,9 +1,11 @@
+import http from "node:http";
 import "dotenv/config";
 import app from "./app";
 import connectDB from "./config/database.config";
 import { initializeKnowledgeBase } from "./services/rag.service";
+import { initSocket } from "./socket";
 
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5050;
 
 const start = async (): Promise<void> => {
   try {
@@ -11,14 +13,17 @@ const start = async (): Promise<void> => {
     await connectDB();
 
     // 2. Index knowledge base if not already done
-    //    First run: loads .txt → splits → embeds → stores in MongoDB
-    //    Subsequent runs: sees data exists, skips
     await initializeKnowledgeBase();
 
-    // 3. Start Express
-    app.listen(PORT, () => {
-      console.log(` EduReach Server is running!`);
+    // 3. Create HTTP server & bind Socket.IO
+    const httpServer = http.createServer(app);
+    initSocket(httpServer);
+
+    // 4. Start Server
+    httpServer.listen(PORT, () => {
+      console.log(` EduReach Server & Socket.IO running!`);
       console.log(` URL: http://localhost:${PORT}`);
+      console.log(` API Docs: http://localhost:${PORT}/api/docs`);
       console.log(` Node: ${process.version}`);
       console.log(` Press Ctrl+C to stop`);
     });

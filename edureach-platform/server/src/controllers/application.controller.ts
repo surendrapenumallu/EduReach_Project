@@ -1,5 +1,6 @@
 import type { Request, Response, NextFunction } from "express";
 import Application from "../models/application.model";
+import { emitNewApplication, emitApplicationStatusUpdate } from "../socket";
 
 // POST /api/applications — Submit new admission application
 export const createApplication = async (
@@ -41,6 +42,13 @@ export const createApplication = async (
       documents: documents || undefined,
       status: "Pending",
     });
+
+    // Real-time broadcast to Admins
+    try {
+      emitNewApplication(newApp);
+    } catch (e) {
+      console.warn("Socket notification warning:", e);
+    }
 
     res.status(201).json({
       success: true,
@@ -136,6 +144,13 @@ export const updateApplicationStatus = async (
     if (!updatedApp) {
       res.status(404).json({ success: false, message: "Application not found." });
       return;
+    }
+
+    // Real-time broadcast
+    try {
+      emitApplicationStatusUpdate(updatedApp);
+    } catch (e) {
+      console.warn("Socket notification warning:", e);
     }
 
     res.status(200).json({

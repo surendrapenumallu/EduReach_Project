@@ -1,4 +1,6 @@
 import type { Request, Response, NextFunction } from "express";
+import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
+import { generateAcademicContent } from "../services/curriculumGenerator";
 
 const MOCK_FACULTY_DATA = {
   stats: {
@@ -142,40 +144,60 @@ export const getFacultyDashboardData = async (_req: Request, res: Response, next
 export const facultyAIAssist = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { taskType, promptText, courseName } = req.body;
+    const course = courseName || "Computer Science & Engineering";
+    const topic = promptText ? promptText.trim() : "";
 
-    let generatedContent = "";
-    if (taskType === "assignment") {
-      generatedContent = `### Generated Assignment Problem Set for ${courseName || "Computer Science"}
+    // 1. Try Gemini AI if API key is configured with a 30s timeout
+    if (process.env.GOOGLE_API_KEY) {
+      try {
+        const model = new ChatGoogleGenerativeAI({
+          apiKey: process.env.GOOGLE_API_KEY,
+          model: "gemini-3.5-flash",
+          temperature: 0.7,
+          maxRetries: 0,
+        });
 
-**Problem 1: Algorithm Complexity Analysis**
-Analyze the time complexity of the following recursive function using the Master Theorem:
-\`\`\`cpp
-int findSubsets(int arr[], int n) {
-    if (n <= 1) return 1;
-    return 2 * findSubsets(arr, n - 1) + n;
+        const prompt = `You are the EduReach Faculty AI Assistant & Teaching Copilot for university professors.
+Task Category: ${taskType || "copilot"}
+Target Course: ${course}
+Professor's Specific Request / Topic: ${topic || "General curriculum and pedagogical assistance"}
+
+Instructions:
+${
+  taskType === "assignment"
+    ? `Generate an authentic, high-quality assignment problem set strictly for ${course}. Include 3 structured problems: Theory/Analysis, Coding Implementation, and Real-world Application, with clear instructions and test cases.`
+    : taskType === "quiz"
+    ? `Generate an authentic 5-question pop-quiz or exam paper strictly for ${course}. Include 3 conceptual multiple-choice questions with answer keys & explanations, plus 2 short coding/analytical questions with marking rubrics.`
+    : taskType === "syllabus"
+    ? `Generate an authentic 12-week course syllabus and lesson plan strictly for ${course}. Cover foundational units, core algorithms, hands-on lab sessions, and capstone milestones.`
+    : `Provide practical, expert academic teaching advice or direct answers to the professor's inquiry strictly relevant to ${course}. If this is an attendance notice request, draft the official warning letter.`
 }
-\`\`\`
 
-**Problem 2: Data Structure Implementation**
-Implement an AVL tree in Python/C++ with self-balancing methods (\`rotateLeft\` and \`rotateRight\`). Include edge-case test suite for double rotation scenarios (LR & RL).
+Format the response using clean, professional Markdown with clear headings (###), bold bullet points, and code blocks where appropriate.`;
 
-**Problem 3: Real-World Case Study**
-Explain how B+ Trees are utilized in modern relational database index structures (e.g. InnoDB storage engine). Compare index lookup performance against Hash indexing for range queries.`;
-    } else if (taskType === "syllabus") {
-      generatedContent = `### Course Syllabus & Lesson Plan — ${courseName || "Data Structures & Algorithms"}
+        const aiPromise = model.invoke(prompt);
+        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("AI timeout")), 30000));
+        const aiResponse: any = await Promise.race([aiPromise, timeoutPromise]);
 
-- **Week 1-2**: Linear Data Structures (Arrays, Linked Lists, Doubly Linked Lists) & Memory Management.
-- **Week 3-4**: Stacks, Queues, Deques & Applications (Expression Evaluation, Backtracking).
-- **Week 5-6**: Non-linear Data Structures: Binary Trees, BSTs, AVL Trees, Heap Sort.
-- **Week 7-8**: Graph Algorithms: BFS, DFS, Dijkstra's Shortest Path, Minimum Spanning Trees (Kruskal/Prim).
-- **Week 9-10**: Advanced Dynamic Programming, Greedy Strategy, & NP-Completeness Overview.`;
-    } else {
-      generatedContent = `### Faculty AI Recommendation for ${courseName || "Class"}
+        const textOutput =
+          typeof aiResponse.content === "string"
+            ? aiResponse.content
+            : JSON.stringify(aiResponse.content);
 
-1. **Student Engagement Tip**: Incorporate live coding polls during the upcoming lecture on ${promptText || "Operating System Deadlocks"}.
-2. **Attendance Notice**: 4 students currently fall below the 75% threshold. Automated warning notices can be issued via the Alert panel.
-3. **Assessment Suggestion**: Conduct a 10-minute pop quiz next Wednesday to reinforce conceptual understanding.`;
+        if (textOutput && textOutput.trim()) {
+          res.status(200).json({
+            success: true,
+            data: { result: textOutput.trim() },
+          });
+          return;
+        }
+      } catch (aiError: any) {
+        console.warn("Gemini call skipped/failed, using high-accuracy EduReach curriculum engine:", aiError?.message || aiError);
+      }
     }
+
+    // 2. High-Accuracy Academic Curriculum & Assessment Engine
+    const generatedContent = generateAcademicContent(taskType, course, topic);
 
     res.status(200).json({
       success: true,

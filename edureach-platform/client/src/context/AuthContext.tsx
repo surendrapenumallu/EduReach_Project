@@ -7,6 +7,7 @@ export interface User {
   email: string;
   phone?: string;
   role?: "student" | "faculty" | "admin";
+  isEmailVerified?: boolean;
   department?: string;
   facultyId?: string;
   designation?: string;

@@ -5,6 +5,7 @@ import {
   getAIBriefing,
   calculateBunkSafety,
   predictAcademicRisk,
+  downloadHallTicketPDF,
 } from "../controllers/student.controller";
 import authMiddleware from "../middleware/auth.middleware";
 
@@ -12,6 +13,9 @@ const router = Router();
 
 // GET /api/student/portal-data (Protected)
 router.get("/portal-data", authMiddleware, getStudentPortalData);
+
+// GET /api/student/hall-ticket/pdf (Public or Auth)
+router.get("/hall-ticket/pdf", downloadHallTicketPDF);
 
 // GET /api/student/ai-briefing (Protected) — Priority 1
 router.get("/ai-briefing", authMiddleware, getAIBriefing);

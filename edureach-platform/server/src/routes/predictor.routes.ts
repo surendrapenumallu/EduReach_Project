@@ -1,20 +1,14 @@
 import { Router, Request, Response, NextFunction } from "express";
 import { predictAdmissions } from "../services/predictor.service";
+import { validateBody } from "../middleware/validate.middleware";
+import { predictorSchema } from "../schemas/predictor.schema";
 
 const router = Router();
 
 // POST /api/predictor/predict — Predict admission chances
-router.post("/predict", (req: Request, res: Response, next: NextFunction): void => {
+router.post("/predict", validateBody(predictorSchema), (req: Request, res: Response, next: NextFunction): void => {
   try {
     const { entranceExam, entranceRank, twelfthPercentage, category } = req.body;
-
-    if (twelfthPercentage === undefined || typeof Number(twelfthPercentage) !== "number") {
-      res.status(400).json({
-        success: false,
-        message: "12th percentage is required for prediction.",
-      });
-      return;
-    }
 
     const result = predictAdmissions({
       entranceExam: entranceExam || "TS EAMCET",

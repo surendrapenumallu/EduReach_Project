@@ -1,0 +1,89 @@
+name: EduReach CI/CD Pipeline
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test-and-verify:
+    name: Lint, Test & Build Validation
+    runs-on: ubuntu-latest
+
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: "npm"
+          cache-dependency-path: |
+            edureach-platform/server/package-lock.json
+            edureach-platform/client/package-lock.json
+
+      - name: Install Backend Dependencies
+        working-directory: edureach-platform/server
+        run: npm ci
+
+      - name: Install Frontend Dependencies
+        working-directory: edureach-platform/client
+        run: npm ci
+
+      - name: Run Backend Vitest Test Suite
+        working-directory: edureach-platform/server
+        env:
+          JWT_SECRET: edureach_ci_jwt_super_secret_2026
+          REDIS_URL: redis://localhost:6379
+        run: npm test
+
+      - name: Run Frontend Vitest Test Suite
+        working-directory: edureach-platform/client
+        run: npm test
+
+      - name: Typecheck & Build Backend
+        working-directory: edureach-platform/server
+        run: npm run build
+
+      - name: Typecheck & Build Frontend Bundle
+        working-directory: edureach-platform/client
+        run: npm run build
+
+  docker-verification:
+    name: Docker Container Build Verification
+    runs-on: ubuntu-latest
+    needs: test-and-verify
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Server Docker Image
+        uses: docker/build-push-action@v5
+        with:
+          context: edureach-platform/server
+          push: false
+          tags: edureach-server:test
+
+      - name: Build Client Docker Image
+        uses: docker/build-push-action@v5
+        with:
+          context: edureach-platform/client
+          push: false
+          tags: edureach-client:test

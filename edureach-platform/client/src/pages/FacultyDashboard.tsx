@@ -31,6 +31,15 @@ import CourseManagerModal from "../components/CourseManagerModal";
 import AIAssignmentEvaluatorModal from "../components/AIAssignmentEvaluatorModal";
 import AttendanceManagerModal from "../components/AttendanceManagerModal";
 import API from "../services/api";
+import {
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+} from "recharts";
+import { joinUserRoom } from "../services/socket.service";
 
 export default function FacultyDashboard() {
   const { user, updateUser } = useAuth();
@@ -118,7 +127,8 @@ export default function FacultyDashboard() {
 
   useEffect(() => {
     loadInitialData();
-  }, []);
+    joinUserRoom("faculty", user?.id);
+  }, [user?.id]);
 
   const handleSubjectChange = (index: number, field: string, value: any) => {
     const updated = [...subjects];
@@ -457,6 +467,43 @@ export default function FacultyDashboard() {
                   <div className="text-2xl font-extrabold text-red-600">4</div>
                   <div className="text-xs text-gray-500 font-semibold">⚠️ Attendance Alerts</div>
                 </div>
+              </div>
+            </div>
+
+            {/* Visual Course Syllabus & Enrollment Analytics */}
+            <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 space-y-3">
+              <div className="flex justify-between items-center">
+                <div>
+                  <h3 className="font-heading font-bold text-gray-900 text-base">Course Progress & Syllabus Distribution</h3>
+                  <p className="text-xs text-gray-500">Syllabus completion percentage across assigned active subjects</p>
+                </div>
+                <span className="text-xs px-2.5 py-1 bg-maroon/10 text-maroon font-bold rounded-lg">
+                  Spring 2026 Term
+                </span>
+              </div>
+
+              <div className="h-56">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={coursesList.map((c: any) => ({
+                      code: c.code,
+                      progress: c.syllabusProgress || 70,
+                      students: c.studentsCount || 50,
+                    }))}
+                    margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+                  >
+                    <XAxis dataKey="code" stroke="#94a3b8" fontSize={11} />
+                    <YAxis domain={[0, 100]} stroke="#94a3b8" fontSize={11} unit="%" />
+                    <Tooltip
+                      contentStyle={{
+                        borderRadius: "10px",
+                        border: "1px solid #e2e8f0",
+                        fontSize: "12px",
+                      }}
+                    />
+                    <Bar dataKey="progress" fill="#7B1113" radius={[6, 6, 0, 0]} name="Syllabus %" />
+                  </BarChart>
+                </ResponsiveContainer>
               </div>
             </div>
 

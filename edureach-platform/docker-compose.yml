@@ -1,0 +1,62 @@
+version: "3.8"
+
+services:
+  # 1. In-Memory Cache & Job Queue
+  redis:
+    image: redis:7-alpine
+    container_name: edureach-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  # 2. Express 5 & Socket.IO Backend API
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: edureach-server
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+    ports:
+      - "5050:5050"
+    environment:
+      - NODE_ENV=production
+      - PORT=5050
+      - REDIS_URL=redis://redis:6379
+      - MONGODB_URI=${MONGODB_URI}
+      - JWT_SECRET=${JWT_SECRET:-edureach_jwt_super_secret_2026}
+      - CLIENT_URL=http://localhost:5173,http://localhost:80,http://localhost:3000
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+      - CLOUDINARY_CLOUD_NAME=${CLOUDINARY_CLOUD_NAME}
+      - CLOUDINARY_API_KEY=${CLOUDINARY_API_KEY}
+      - CLOUDINARY_API_SECRET=${CLOUDINARY_API_SECRET}
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5050/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+  # 3. React 19 + Nginx Frontend
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    container_name: edureach-client
+    restart: unless-stopped
+    depends_on:
+      - server
+    ports:
+      - "80:80"
+      - "5173:80"
+
+volumes:
+  redis_data:

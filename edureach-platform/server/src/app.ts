@@ -1,13 +1,7 @@
 import express from "express";
 import type { Application, Request, Response } from "express";
 import cors from "cors";
-import authRoutes from "./routes/auth.routes";
-import chatRoutes from "./routes/chat.routes";
-import applicationRoutes from "./routes/application.routes";
-import predictorRoutes from "./routes/predictor.routes";
-import resultRoutes from "./routes/result.routes";
-import facultyRoutes from "./routes/faculty.routes";
-import studentRoutes from "./routes/student.routes";
+import apiRoutes from "./routes";
 import errorHandler from "./middleware/error-handler.middleware";
 
 const app: Application = express();
@@ -30,8 +24,21 @@ app.use(
     allowedHeaders: ["Content-Type", "Authorization"],
   }),
 );
-app.use(express.json({ limit: "10mb" }));
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: "50mb" }));
+app.use(express.urlencoded({ extended: true, limit: "50mb" }));
+
+import swaggerUi from "swagger-ui-express";
+import { swaggerDocument } from "./config/swagger.config";
+
+// Root Welcome Endpoint
+app.get("/", (_req: Request, res: Response) => {
+  res.status(200).json({
+    success: true,
+    message: "EduReach College Intelligence Platform API is running.",
+    docs: "/api/docs",
+    health: "/api/health",
+  });
+});
 
 // Health Check Endpoints for production deployment monitoring
 app.get(["/health", "/api/health"], (_req: Request, res: Response) => {
@@ -42,13 +49,11 @@ app.get(["/health", "/api/health"], (_req: Request, res: Response) => {
   });
 });
 
-app.use("/api/auth", authRoutes);
-app.use("/api/chat", chatRoutes);
-app.use("/api/applications", applicationRoutes);
-app.use("/api/predictor", predictorRoutes);
-app.use("/api/results", resultRoutes);
-app.use("/api/faculty", facultyRoutes);
-app.use("/api/student", studentRoutes);
+// Swagger Interactive API Documentation
+app.use("/api/docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
+
+// Mount Centralized API Routes
+app.use("/api", apiRoutes);
 
 app.use((_req: Request, res: Response) => {
   res.status(404).json({ success: false, message: "Route not found." });

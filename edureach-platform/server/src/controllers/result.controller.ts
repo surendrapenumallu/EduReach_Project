@@ -1,5 +1,7 @@
 import type { Request, Response, NextFunction } from "express";
+import mongoose from "mongoose";
 import Result from "../models/result.model";
+import { streamGradeCardPDF } from "../services/pdf.service";
 
 // Demo initial data to seed if DB has no results
 const DEMO_RESULTS = [
@@ -187,6 +189,25 @@ export const deleteResult = async (req: Request, res: Response, next: NextFuncti
       success: true,
       message: "Result record deleted.",
     });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// GET /api/results/:id/pdf — Stream official PDF Grade Report
+export const downloadResultPDF = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const { id } = req.params;
+    let result = null;
+
+    if (id && mongoose.isValidObjectId(id)) {
+      result = await Result.findById(id);
+    }
+    if (!result) {
+      result = await Result.findOne();
+    }
+    const data = result ? (result.toObject ? result.toObject() : result) : (DEMO_RESULTS[0] as any);
+    streamGradeCardPDF(data as any, res);
   } catch (error) {
     next(error);
   }

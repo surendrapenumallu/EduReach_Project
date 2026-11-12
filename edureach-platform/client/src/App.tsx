@@ -65,14 +65,7 @@ export default function App() {
               </WithNavbar>
             }
           />
-          <Route
-            path="/admin"
-            element={
-              <WithNavbar>
-                <AdminDashboard />
-              </WithNavbar>
-            }
-          />
+          <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signup" element={<SignupPage />} />
         </Routes>

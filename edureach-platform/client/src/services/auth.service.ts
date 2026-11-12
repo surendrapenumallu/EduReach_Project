@@ -27,13 +27,37 @@ export const getMe = async () => {
   return res.data.data; // { user }
 };
 
+export const sendOtp = async (email: string, purpose: string = "email_verification") => {
+  const res = await API.post("/auth/send-otp", { email, purpose });
+  return res.data;
+};
+
+export const verifyOtp = async (data: {
+  email: string;
+  otp: string;
+  purpose?: string;
+  newPassword?: string;
+}) => {
+  const res = await API.post("/auth/verify-otp", data);
+  return res.data;
+};
+
 export const forgotPassword = async (email: string) => {
   const res = await API.post("/auth/forgot-password", { email });
   return res.data;
 };
 
-export const verifyOtp = async (data: { email: string; otp: string; newPassword: string }) => {
-  const res = await API.post("/auth/verify-otp", data);
+export const resetPassword = async (data: {
+  email: string;
+  otp: string;
+  newPassword: string;
+}) => {
+  const res = await API.post("/auth/reset-password", data);
+  return res.data;
+};
+
+export const logoutUser = async () => {
+  const res = await API.post("/auth/logout");
   return res.data;
 };
 
